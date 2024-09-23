@@ -3,7 +3,7 @@
 
 pip install -r requirements.txt
 
-### 2. Установка зависимостей
+### 2. Запуск
 Для запуска сервера используйте следующую команду:
 
 uvicorn hw-1.main:application --host 0.0.0.0 --port 8000 --reload
