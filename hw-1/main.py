@@ -1,49 +1,57 @@
-import math
-from http import HTTPStatus
-from typing import Annotated
+import json
+from typing import Any, Callable, Dict
+from urllib.parse import parse_qs
+from .math_controllers import calculate_factorial, calculate_fibonacci, calculate_mean, create_error_response
 
-from fastapi import FastAPI, HTTPException, Query
-from fastapi.responses import JSONResponse
+async def application(scope: Dict[str, Any], receive: Callable, send: Callable):
+    assert scope.get('type') == 'http'
 
-app = FastAPI()
+    path = get_path(scope)
+    query_params = get_query_params(scope)
 
+    response = route_request(path, query_params, await get_request_body(receive))
+    await handle_response(send, response)
 
-@app.get("/factorial")
-def get_factorial(n: Annotated[int, Query()]) -> JSONResponse:
-    if n < 0:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail="Invalid value for n, must be non-negative",
-        )
+async def handle_response(send, reply):
+    await send_headers(send, reply['status'])
+    await send_body(send, reply['body'])
 
-    result = math.factorial(n)
+def get_path(scope):
+    return scope.get('path', '')
 
-    return JSONResponse({"result": result})
+def get_query_params(scope):
+    query_string = scope.get('query_string', b'').decode()
+    return parse_qs(query_string)
 
+async def get_request_body(receive):
+    body_content = b""
+    while True:
+        message = await receive()
+        body_content += message.get('body', b'')
+        if not message.get('more_body', False):
+            break
+    return body_content
 
-@app.get("/fibonacci/{n}")
-def get_fibonacci(n: int) -> JSONResponse:
-    if n < 0:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail="Invalid value for n, must be non-negative",
-        )
+def route_request(path, query_params, body):
+    if path.startswith('/factorial'):
+        return calculate_factorial(query_params)
+    elif path.startswith('/fibonacci'):
+        return calculate_fibonacci(path)
+    elif path.startswith('/mean'):
+        return calculate_mean(body)
+    else:
+        return create_error_response(404, 'Resource not found')
 
-    a, b = 0, 1
-    for _ in range(n):
-        a, b = b, a + b
+async def send_headers(send, status):
+    headers = [(b'content-type', b'application/json')]
+    await send({
+        'type': 'http.response.start',
+        'status': status,
+        'headers': headers
+    })
 
-    return JSONResponse({"result": b})
-
-
-@app.get("/mean")
-def get_mean(data: list[float]) -> JSONResponse:
-    if len(data) == 0:
-        raise HTTPException(
-            status_code=HTTPStatus.BAD_REQUEST,
-            detail="Invalid value for body, must be non-empty array of floats",
-        )
-
-    result = sum(data) / len(data)
-
-    return JSONResponse({"result": result})
+async def send_body(send, body):
+    await send({
+        'type': 'http.response.body',
+        'body': body.encode('utf-8')
+    })
