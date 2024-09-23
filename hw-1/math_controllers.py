@@ -6,14 +6,16 @@ def calculate_factorial(params):
         n = int(params.get('n', [None])[0])
         if n is None or n < 0:
             return create_error_response(400, 'Value must be a non-negative integer')
+
+        result = 1
+        for i in range(2, n + 1):
+            result *= i
+
+        return create_success_response({'number': n, 'result': result})
+    
     except (ValueError, TypeError):
         return create_error_response(422, 'Invalid input for factorial calculation')
 
-    result = 1
-    for i in range(2, n + 1):
-        result *= i
-
-    return create_success_response({'number': n, 'result': result})
 
 
 def calculate_fibonacci(path):
@@ -22,14 +24,14 @@ def calculate_fibonacci(path):
         n = int(n_str)
         if n < 0:
             return create_error_response(400, 'Value must be a non-negative integer')
+        fibonacci_sequence = [0, 1]
+        for _ in range(2, n):
+            fibonacci_sequence.append(fibonacci_sequence[-1] + fibonacci_sequence[-2])
+        return create_success_response({'n': n, 'result': fibonacci_sequence[:n]})
+    
     except (ValueError, TypeError):
         return create_error_response(422, 'Invalid input for fibonacci calculation')
 
-    fibonacci_sequence = [0, 1]
-    for _ in range(2, n):
-        fibonacci_sequence.append(fibonacci_sequence[-1] + fibonacci_sequence[-2])
-
-    return create_success_response({'n': n, 'result': fibonacci_sequence[:n]})
 
 
 def calculate_mean(body):
