@@ -1,110 +1,111 @@
 from http import HTTPStatus
-from typing import List, Optional
+from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, Response
 from pydantic import NonNegativeInt, PositiveInt, NonNegativeFloat
 
 from app_store.domains import Item
-import app_store.quers as quers
+import app_store.quers as queries
 from app_item.contrs import ItemRequestPatch, ItemRequestPost
 
 router_item = APIRouter(prefix="/item")
 
-@router_item.get(
-    "/{id}",
-    responses={
-        HTTPStatus.OK: {
-            "description": "Successfully returned requested item",
-        },
-        HTTPStatus.NOT_FOUND: {
-            "description": "Failed to return requested item as one was not found",
-        },
-    },
-)
-async def get_item_by_id(id: int) -> Item:
-    """Возвращает товар по его идентификатору."""
-    item = quers.get_one_item(id)
-    if not item:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail=f"Request resource /item/{id} was not found",
-        )
-    return item
-
-@router_item.get("/")
-async def get_item_list(
-    offset: NonNegativeInt = Query(default=0),
-    limit: PositiveInt = Query(default=10),
-    min_price: Optional[NonNegativeFloat] = Query(default=None),
-    max_price: Optional[NonNegativeFloat] = Query(default=None),
-    show_deleted: bool = Query(default=False),
-) -> List[Item]:
-    return [
-        item for item in quers.get_many_items(offset, limit, min_price, max_price, show_deleted)
-    ]
 
 @router_item.post(
     "/",
     status_code=HTTPStatus.CREATED,
 )
 async def post_item(info: ItemRequestPost, response: Response):
-    item = quers.add_item(info=info)
-    response.headers["Location"] = f"/item/{item.id}"
+    item = queries.add_item(info=info)
+    response.headers["location"] = f"/item/{item.id}"
     return item
+
 
 @router_item.put(
     "/{id}",
     responses={
         HTTPStatus.OK: {
-            "description": "Successfully updated or upserted item",
+            "description": "done",
         },
         HTTPStatus.NOT_MODIFIED: {
-            "description": "Failed to modify item as one was not found",
+            "description": "fail",
+        },
+    }
+)
+
+@router_item.get(
+    "/{id}",
+    responses={
+        HTTPStatus.OK: {
+            "description": "done",
+        },
+        HTTPStatus.NOT_FOUND: {
+            "description": "fail",
         },
     },
 )
-async def put_item(id: int, info: ItemRequestPost) -> Item:
-    item = quers.put_item(id, info)
+async def get_item_by_id(id: int) -> Item:
+    item = queries.get_one_item(id)
+    if not item:
+        raise HTTPException(
+                    HTTPStatus.NOT_FOUND,
+                    f"Request resource /item/{id} was not found",
+                )
+    return item
+
+@router_item.get("/")
+async def get_item_list(
+    offset: Annotated[NonNegativeInt, Query()] = 0,
+    limit: Annotated[PositiveInt, Query()] = 10,
+    min_price: Annotated[NonNegativeFloat, Query()] = None,
+    max_price: Annotated[NonNegativeFloat, Query()] = None,
+    show_deleted: Annotated[bool, Query()] = False,
+) -> list[Item]:
+    return [item for item in queries.get_many_items(offset, limit,
+                                                    min_price, max_price,
+                                                    show_deleted)]
+
+
+
+async def put_item(id: int, info: ItemRequestPost):
+    item = queries.put_item(id, info)
     if item is None:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_MODIFIED,
-            detail=f"Requested resource /item/{id} was not found",
+            HTTPStatus.NOT_MODIFIED,
+            f"Requested resource /item/{id} was not found",
         )
     return item
+
 
 @router_item.delete(
     "/{id}",
     responses={
         HTTPStatus.OK: {
-            "description": "Successfully deleted item",
+            "description": "done",
         },
-    },
+    }
 )
 async def delete_item(id: int, response: Response):
-    item = quers.delete_item(id)
-    if item is None:
-        raise HTTPException(
-            status_code=HTTPStatus.NOT_FOUND,
-            detail=f"Requested resource /item/{id} was not found",
-        )
+    item = queries.delete_item(id)
     return item
+
 
 @router_item.patch(
     "/{id}",
     responses={
         HTTPStatus.OK: {
-            "description": "Successfully patched item",
+            "description": "done",
         },
         HTTPStatus.NOT_MODIFIED: {
-            "description": "Failed to modify item as one was not found",
+            "description": "fail",
         },
     },
 )
-async def patch_item(id: int, info: ItemRequestPatch) -> Item:
-    item = quers.patch_item(id, info)
+async def patch_item(id: int, info: ItemRequestPatch):
+    item = queries.patch_item(id, info)
     if item is None:
         raise HTTPException(
-            status_code=HTTPStatus.NOT_MODIFIED,
-            detail=f"Requested resource /item/{id} was not found",
+            HTTPStatus.NOT_MODIFIED,
+            f"Requested resource /item/{id} was not found",
         )
     return item

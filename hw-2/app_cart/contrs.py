@@ -1,5 +1,5 @@
 from pydantic import BaseModel, ConfigDict
-from store.domains import Cart
+from app_store.domains import Cart
 
 class CartResponse(BaseModel):
     id: int

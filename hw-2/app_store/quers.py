@@ -107,4 +107,5 @@ def add_items_to_cart(cart_id: int, item_id: int) -> Optional[Cart]:
         'available': not item.deleted
     })
     cart.price += item.price
+    int(cart.price)
     return cart
